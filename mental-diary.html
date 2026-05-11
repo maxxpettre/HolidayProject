@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ментальний щоденник</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f0e8;
+    --paper: #faf7f2;
+    --paper-dark: #f0ebe0;
+    --ink: #2c2416;
+    --ink-light: #6b5d4a;
+    --ink-faint: #b8a990;
+    --accent: #8b4513;
+    --accent-warm: #c4621e;
+    --accent-gold: #c9922a;
+    --accent-sage: #5a7a5a;
+    --sidebar-w: 220px;
+    --panel-w: 380px;
+    --line-h: 2rem;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Crimson Pro', Georgia, serif;
+    background: var(--bg);
+    color: var(--ink);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    font-size: 15px;
+  }
+
+  /* SIDEBAR */
+  #sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--ink);
+    color: var(--paper);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    z-index: 10;
+  }
+  #sidebar::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 0; bottom: 0; width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(201,146,42,0.4) 30%, rgba(201,146,42,0.4) 70%, transparent);
+  }
+  .sidebar-header { padding: 26px 18px 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .sidebar-title { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 600; color: var(--accent-gold); line-height: 1.3; }
+  .sidebar-subtitle { font-size: 0.7rem; color: var(--ink-faint); margin-top: 4px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  #new-day-btn {
+    margin: 14px 16px 6px;
+    padding: 9px 14px;
+    background: var(--accent-gold);
+    color: var(--ink);
+    border: none;
+    cursor: pointer;
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.85rem;
+    border-radius: 2px;
+    transition: all 0.2s;
+    width: calc(100% - 32px);
+    text-align: left;
+  }
+  #new-day-btn:hover { background: var(--accent-warm); color: var(--paper); }
+
+  /* Date picker inside sidebar */
+  #date-picker-wrap {
+    margin: 0 16px 10px;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    animation: fadeSlide 0.2s ease both;
+  }
+  #date-picker-wrap.open { display: flex; }
+  #date-picker-wrap label { font-size: 0.72rem; color: var(--ink-faint); letter-spacing: 0.05em; text-transform: uppercase; }
+  #date-input {
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--paper);
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.88rem;
+    border-radius: 2px;
+    outline: none;
+    width: 100%;
+    color-scheme: dark;
+  }
+  #date-input:focus { border-color: var(--accent-gold); }
+  .date-picker-btns { display: flex; gap: 6px; }
+  .date-picker-btns button {
+    flex: 1;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 2px;
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  #date-confirm-btn { background: var(--accent-gold); color: var(--ink); }
+  #date-confirm-btn:hover { background: var(--accent-warm); color: var(--paper); }
+  #date-cancel-btn { background: rgba(255,255,255,0.08); color: var(--ink-faint); }
+  #date-cancel-btn:hover { background: rgba(255,255,255,0.14); color: var(--paper); }
+
+  #days-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+  #days-list::-webkit-scrollbar { width: 3px; }
+  #days-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+  .day-entry {
+    padding: 10px 18px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.18s;
+    position: relative;
+  }
+  .day-entry:hover { background: rgba(255,255,255,0.05); border-left-color: rgba(201,146,42,0.4); }
+  .day-entry.active { background: rgba(201,146,42,0.12); border-left-color: var(--accent-gold); }
+  .day-entry-date { font-family: 'Playfair Display', serif; font-size: 0.88rem; color: var(--paper); font-weight: 600; }
+  .day-entry-weekday { font-size: 0.68rem; color: var(--ink-faint); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .day-entry-preview { font-size: 0.74rem; color: rgba(245,240,232,0.4); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
+  .day-delete { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: rgba(255,255,255,0.2); cursor: pointer; font-size: 1.1rem; opacity: 0; transition: opacity 0.2s; padding: 4px 6px; line-height: 1; }
+  .day-entry:hover .day-delete { opacity: 1; }
+  .day-delete:hover { color: #e07070; }
+
+  /* MAIN */
+  #main { flex: 1; display: flex; overflow: hidden; position: relative; }
+  #empty-state {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    background: var(--paper); z-index: 5;
+  }
+  #empty-state.hidden { display: none; }
+  .empty-icon { font-size: 3rem; opacity: 0.3; }
+  .empty-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--ink-faint); font-style: italic; }
+  .empty-hint { font-size: 0.8rem; color: var(--ink-faint); opacity: 0.7; }
+  #empty-start-btn { padding: 10px 24px; background: var(--accent-gold); color: var(--ink); border: none; cursor: pointer; font-family: 'Crimson Pro', serif; font-size: 0.9rem; border-radius: 2px; margin-top: 6px; transition: all 0.2s; }
+  #empty-start-btn:hover { background: var(--accent-warm); color: var(--paper); }
+
+  #content-view { display: flex; flex: 1; overflow: hidden; }
+  #content-view.hidden { display: none; }
+
+  /* STRUCTURED PANEL */
+  #structured-panel {
+    width: var(--panel-w); min-width: var(--panel-w);
+    background: var(--paper); border-right: 1px solid rgba(44,36,22,0.1);
+    overflow-y: auto; padding-bottom: 40px;
+  }
+  #structured-panel::-webkit-scrollbar { width: 4px; }
+  #structured-panel::-webkit-scrollbar-thumb { background: var(--ink-faint); border-radius: 2px; }
+
+  .panel-date-header { padding: 22px 26px 14px; border-bottom: 1px solid rgba(44,36,22,0.08); position: sticky; top: 0; background: var(--paper); z-index: 5; }
+  .panel-date-big { font-family: 'Playfair Display', serif; font-size: 1.55rem; font-weight: 600; color: var(--ink); line-height: 1; }
+  .panel-date-full { font-size: 0.76rem; color: var(--ink-light); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
+  #save-indicator { display: inline-block; font-size: 0.7rem; color: var(--accent-sage); margin-top: 4px; opacity: 0; transition: opacity 0.5s; font-style: italic; }
+  #save-indicator.show { opacity: 1; }
+
+  .section { padding: 16px 26px 4px; }
+  .section + .section { border-top: 1px dashed rgba(44,36,22,0.1); }
+  .section-label { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .section-icon { font-size: 1rem; }
+  .section-title { font-family: 'Playfair Display', serif; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-light); }
+  .section-count { font-size: 0.64rem; background: var(--paper-dark); color: var(--ink-faint); border-radius: 10px; padding: 1px 7px; margin-left: auto; }
+
+  .item-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 7px; animation: fadeSlide 0.25s ease both; }
+  @keyframes fadeSlide { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  .item-num { font-family: 'Playfair Display', serif; font-size: 0.7rem; color: var(--ink-faint); min-width: 16px; padding-top: 6px; text-align: right; }
+  .item-input { flex: 1; background: transparent; border: none; border-bottom: 1px solid var(--paper-dark); padding: 4px 2px; font-family: 'Crimson Pro', serif; font-size: 0.92rem; color: var(--ink); outline: none; transition: border-color 0.2s; resize: none; overflow: hidden; line-height: 1.5; min-height: 28px; }
+  .item-input:focus { border-bottom-color: var(--accent-gold); }
+  .item-input::placeholder { color: var(--ink-faint); font-style: italic; }
+
+  .good-things-grid { display: flex; flex-direction: column; gap: 6px; padding: 0 26px 16px; }
+  .good-card { display: flex; align-items: flex-start; gap: 10px; background: linear-gradient(135deg, rgba(90,122,90,0.07), rgba(90,122,90,0.02)); border: 1px solid rgba(90,122,90,0.18); border-radius: 3px; padding: 8px 12px; animation: fadeSlide 0.25s ease both; }
+  .good-card .item-input { border-bottom-color: transparent; }
+  .good-card .item-input:focus { border-bottom-color: var(--accent-sage); }
+  .good-star { font-size: 0.9rem; padding-top: 4px; color: var(--accent-sage); }
+
+  .divider { margin: 4px 26px 0; height: 1px; background: linear-gradient(to right, transparent, rgba(44,36,22,0.1), transparent); }
+
+  /* JOURNAL */
+  #journal-panel { flex: 1; background: var(--paper); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+  #journal-panel::before { content: ''; position: absolute; left: 48px; top: 0; bottom: 0; width: 1px; background: rgba(139,69,19,0.12); pointer-events: none; z-index: 1; }
+  .journal-header { padding: 22px 28px 14px 64px; border-bottom: 1px solid rgba(44,36,22,0.08); display: flex; align-items: center; gap: 10px; background: var(--paper); position: relative; z-index: 5; }
+  .journal-header-icon { font-size: 1rem; color: var(--ink-light); }
+  .journal-header-title { font-family: 'Playfair Display', serif; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-light); font-weight: 600; }
+  #word-count { margin-left: auto; font-size: 0.7rem; color: var(--ink-faint); font-style: italic; }
+  .journal-lines { flex: 1; overflow: hidden; position: relative; }
+  .journal-lines::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background-image: repeating-linear-gradient(to bottom, transparent, transparent calc(var(--line-h) - 1px), rgba(44,36,22,0.055) calc(var(--line-h) - 1px), rgba(44,36,22,0.055) var(--line-h));
+    background-position: 0 20px;
+  }
+  #journal-textarea { position: relative; z-index: 1; width: 100%; height: 100%; padding: 20px 36px 40px 64px; background: transparent; border: none; outline: none; font-family: 'Crimson Pro', serif; font-size: 1.05rem; font-weight: 300; line-height: var(--line-h); color: var(--ink); resize: none; caret-color: var(--accent); }
+  #journal-textarea::placeholder { color: var(--ink-faint); font-style: italic; }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 20px; right: 20px; background: var(--ink); color: var(--paper); padding: 10px 18px; border-radius: 3px; font-size: 0.82rem; font-style: italic; opacity: 0; transform: translateY(8px); transition: all 0.3s; z-index: 100; pointer-events: none; }
+  #toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-title">Ментальний щоденник</div>
+    <div class="sidebar-subtitle">Мої нотатки</div>
+  </div>
+  <button id="new-day-btn">+ Новий день</button>
+
+  <!-- inline date picker -->
+  <div id="date-picker-wrap">
+    <label>Оберіть дату</label>
+    <input type="date" id="date-input">
+    <div class="date-picker-btns">
+      <button id="date-confirm-btn">Додати</button>
+      <button id="date-cancel-btn">Скасувати</button>
+    </div>
+  </div>
+
+  <div id="days-list"></div>
+</aside>
+
+<div id="main">
+  <div id="empty-state">
+    <div class="empty-icon">📖</div>
+    <div class="empty-title">Ваш щоденник порожній</div>
+    <div class="empty-hint">Натисніть «Новий день», щоб почати</div>
+    <button id="empty-start-btn">Почати сьогодні</button>
+  </div>
+
+  <div id="content-view" class="hidden">
+    <div id="structured-panel">
+      <div class="panel-date-header">
+        <div class="panel-date-big" id="header-date"></div>
+        <div class="panel-date-full" id="header-weekday"></div>
+        <div id="save-indicator">збережено ✓</div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">
+          <span class="section-icon">🌿</span>
+          <span class="section-title">Вдячність</span>
+          <span class="section-count">4 речі</span>
+        </div>
+        <div id="gratitude-list"></div>
+      </div>
+      <div class="divider"></div>
+
+      <div class="section">
+        <div class="section-label">
+          <span class="section-icon">☀️</span>
+          <span class="section-title">Плани на сьогодні</span>
+          <span class="section-count">4 справи</span>
+        </div>
+        <div id="today-plans-list"></div>
+      </div>
+      <div class="divider"></div>
+
+      <div class="section">
+        <div class="section-label">
+          <span class="section-icon">✨</span>
+          <span class="section-title">Що гарного сталося</span>
+          <span class="section-count">3 моменти</span>
+        </div>
+      </div>
+      <div class="good-things-grid" id="good-things-list"></div>
+      <div class="divider"></div>
+
+      <div class="section">
+        <div class="section-label">
+          <span class="section-icon">🌙</span>
+          <span class="section-title">Плани на завтра</span>
+          <span class="section-count">4 справи</span>
+        </div>
+        <div id="tomorrow-plans-list"></div>
+      </div>
+    </div>
+
+    <div id="journal-panel">
+      <div class="journal-header">
+        <span class="journal-header-icon">✒️</span>
+        <span class="journal-header-title">Роздуми та нотатки</span>
+        <span id="word-count">0 слів</span>
+      </div>
+      <div class="journal-lines">
+        <textarea id="journal-textarea"
+          placeholder="Запишіть свої думки, переживання, ідеї... Це місце лише для вас."></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'mental_diary_v2';
+  var WEEKDAYS = ['Неділя','Понеділок','Вівторок','Середа','Четвер','П\'ятниця','Субота'];
+  var MONTHS   = ['січня','лютого','березня','квітня','травня','червня',
+                  'липня','серпня','вересня','жовтня','листопада','грудня'];
+
+  var data = {};
+  var currentDay = null;
+  var saveTimer = null;
+
+  /* ── Storage ── */
+  function load() {
+    try { data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+    catch (e) { data = {}; }
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+    var el = document.getElementById('save-indicator');
+    el.classList.add('show');
+    setTimeout(function () { el.classList.remove('show'); }, 2000);
+  }
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, 500);
+  }
+
+  /* ── Date utils ── */
+  function todayKey() {
+    var d = new Date();
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+  function keyToDate(key) {
+    var p = key.split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]);
+  }
+  function fmtShort(key) {
+    var d = keyToDate(key);
+    return d.getDate() + ' ' + MONTHS[d.getMonth()];
+  }
+  function fmtFull(key) {
+    var d = keyToDate(key);
+    return WEEKDAYS[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+  }
+  function sortedKeys() {
+    return Object.keys(data).sort(function (a, b) { return b.localeCompare(a); });
+  }
+
+  /* ── Entry skeleton ── */
+  function newEntry() {
+    return { gratitude: ['','','',''], todayPlans: ['','','',''], goodThings: ['','',''], tomorrowPlans: ['','','',''], journal: '' };
+  }
+  function ensureArrays(entry) {
+    if (!Array.isArray(entry.gratitude))     entry.gratitude     = [];
+    if (!Array.isArray(entry.todayPlans))    entry.todayPlans    = [];
+    if (!Array.isArray(entry.goodThings))    entry.goodThings    = [];
+    if (!Array.isArray(entry.tomorrowPlans)) entry.tomorrowPlans = [];
+    if (entry.journal == null)               entry.journal       = '';
+    while (entry.gratitude.length     < 4) entry.gratitude.push('');
+    while (entry.todayPlans.length    < 4) entry.todayPlans.push('');
+    while (entry.goodThings.length    < 3) entry.goodThings.push('');
+    while (entry.tomorrowPlans.length < 4) entry.tomorrowPlans.push('');
+  }
+
+  /* ── New day logic ── */
+  var pickerWrap = document.getElementById('date-picker-wrap');
+  var dateInput  = document.getElementById('date-input');
+
+  function openPicker() {
+    // default to today
+    dateInput.value = todayKey();
+    pickerWrap.classList.add('open');
+    dateInput.focus();
+  }
+  function closePicker() {
+    pickerWrap.classList.remove('open');
+  }
+
+  function addDayForKey(key) {
+    if (!key) return;
+    if (data[key]) {
+      // already exists — just open it
+      showToast('Цей день вже є в щоденнику');
+    } else {
+      data[key] = newEntry();
+      save();
+    }
+    renderSidebar();
+    openDay(key);
+    closePicker();
+  }
+
+  // "Новий день" button: if today doesn't exist yet → create immediately; otherwise open picker
+  document.getElementById('new-day-btn').addEventListener('click', function () {
+    if (pickerWrap.classList.contains('open')) {
+      closePicker();
+      return;
+    }
+    var today = todayKey();
+    if (!data[today]) {
+      addDayForKey(today);
+    } else {
+      openPicker();
+    }
+  });
+
+  document.getElementById('date-confirm-btn').addEventListener('click', function () {
+    var key = dateInput.value; // "YYYY-MM-DD"
+    if (!key) return;
+    addDayForKey(key);
+  });
+
+  document.getElementById('date-cancel-btn').addEventListener('click', closePicker);
+
+  document.getElementById('empty-start-btn').addEventListener('click', function () {
+    addDayForKey(todayKey());
+  });
+
+  /* ── Open day ── */
+  function openDay(key) {
+    currentDay = key;
+    ensureArrays(data[key]);
+
+    document.getElementById('empty-state').classList.add('hidden');
+    document.getElementById('content-view').classList.remove('hidden');
+
+    document.getElementById('header-date').textContent    = fmtShort(key);
+    document.getElementById('header-weekday').textContent = fmtFull(key);
+
+    renderList('gratitude-list',      data[key].gratitude,     'gratitude',     ['За що вдячні...','','','']);
+    renderList('today-plans-list',    data[key].todayPlans,    'todayPlans',    ['Головна задача дня','','','']);
+    renderGood('good-things-list',    data[key].goodThings);
+    renderList('tomorrow-plans-list', data[key].tomorrowPlans, 'tomorrowPlans', ['Що зробити завтра','','','']);
+
+    var ta = document.getElementById('journal-textarea');
+    ta.value = data[key].journal || '';
+    updateWordCount(ta.value);
+
+    renderSidebar();
+  }
+
+  function deleteDay(key) {
+    if (!confirm('Видалити цей запис?')) return;
+    delete data[key];
+    save();
+    currentDay = null;
+    var remaining = sortedKeys();
+    if (remaining.length) {
+      openDay(remaining[0]);
+    } else {
+      document.getElementById('empty-state').classList.remove('hidden');
+      document.getElementById('content-view').classList.add('hidden');
+    }
+    renderSidebar();
+  }
+
+  /* ── Render sidebar ── */
+  function renderSidebar() {
+    var list = document.getElementById('days-list');
+    list.innerHTML = '';
+    var keys = sortedKeys();
+
+    if (keys.length === 0) {
+      document.getElementById('empty-state').classList.remove('hidden');
+      document.getElementById('content-view').classList.add('hidden');
+      return;
+    }
+
+    keys.forEach(function (key) {
+      var entry = data[key];
+      var div = document.createElement('div');
+      div.className = 'day-entry' + (key === currentDay ? ' active' : '');
+
+      var preview = (entry.journal && entry.journal.trim())
+        ? entry.journal.trim().slice(0, 30) + (entry.journal.length > 30 ? '…' : '')
+        : (Array.isArray(entry.gratitude) ? (entry.gratitude.find(function (x) { return x; }) || '') : '');
+
+      var dateEl = document.createElement('div');
+      dateEl.className = 'day-entry-date';
+      dateEl.textContent = fmtShort(key);
+
+      var wdEl = document.createElement('div');
+      wdEl.className = 'day-entry-weekday';
+      wdEl.textContent = WEEKDAYS[keyToDate(key).getDay()];
+
+      div.appendChild(dateEl);
+      div.appendChild(wdEl);
+
+      if (preview) {
+        var pvEl = document.createElement('div');
+        pvEl.className = 'day-entry-preview';
+        pvEl.textContent = preview;
+        div.appendChild(pvEl);
+      }
+
+      var delBtn = document.createElement('button');
+      delBtn.className = 'day-delete';
+      delBtn.textContent = '×';
+      delBtn.title = 'Видалити';
+      (function (k) {
+        delBtn.addEventListener('click', function (e) { e.stopPropagation(); deleteDay(k); });
+        div.addEventListener('click', function () { openDay(k); });
+      }(key));
+      div.appendChild(delBtn);
+
+      list.appendChild(div);
+    });
+  }
+
+  /* ── Render lists ── */
+  function renderList(containerId, arr, field, ph) {
+    var c = document.getElementById(containerId);
+    c.innerHTML = '';
+    arr.forEach(function (val, i) {
+      var row = document.createElement('div');
+      row.className = 'item-row';
+
+      var num = document.createElement('span');
+      num.className = 'item-num';
+      num.textContent = (i + 1) + '.';
+
+      var ta = document.createElement('textarea');
+      ta.className = 'item-input';
+      ta.rows = 1;
+      ta.placeholder = ph[i] || '...';
+      ta.value = val;
+      ta.dataset.field = field;
+      ta.dataset.index = String(i);
+      ta.addEventListener('input', onItemInput);
+      ta.addEventListener('keydown', onItemKey);
+
+      row.appendChild(num);
+      row.appendChild(ta);
+      c.appendChild(row);
+      autoResize(ta);
+    });
+  }
+
+  function renderGood(containerId, arr) {
+    var emojis = ['🌸','☀️','🍃'];
+    var c = document.getElementById(containerId);
+    c.innerHTML = '';
+    arr.forEach(function (val, i) {
+      var card = document.createElement('div');
+      card.className = 'good-card';
+      var star = document.createElement('span');
+      star.className = 'good-star';
+      star.textContent = emojis[i] || '✦';
+      var ta = document.createElement('textarea');
+      ta.className = 'item-input';
+      ta.rows = 1;
+      ta.placeholder = 'Щось хороше, що трапилось сьогодні...';
+      ta.value = val;
+      ta.dataset.field = 'goodThings';
+      ta.dataset.index = String(i);
+      ta.addEventListener('input', onItemInput);
+      ta.addEventListener('keydown', onItemKey);
+      card.appendChild(star);
+      card.appendChild(ta);
+      c.appendChild(card);
+      autoResize(ta);
+    });
+  }
+
+  /* ── Input handlers ── */
+  function onItemInput() {
+    if (!currentDay) return;
+    data[currentDay][this.dataset.field][parseInt(this.dataset.index, 10)] = this.value;
+    autoResize(this);
+    scheduleSave();
+  }
+  function onItemKey(e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    var all = document.querySelectorAll('[data-field="' + this.dataset.field + '"]');
+    var idx = parseInt(this.dataset.index, 10);
+    if (idx + 1 < all.length) all[idx + 1].focus();
+  }
+
+  document.getElementById('journal-textarea').addEventListener('input', function () {
+    if (!currentDay) return;
+    data[currentDay].journal = this.value;
+    updateWordCount(this.value);
+    scheduleSave();
+  });
+
+  /* ── Utils ── */
+  function autoResize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+
+  function updateWordCount(text) {
+    var n = text.trim() ? text.trim().split(/\s+/).length : 0;
+    var form = n % 10 === 1 && n % 100 !== 11 ? 'слово'
+             : [2,3,4].indexOf(n % 10) !== -1 && [12,13,14].indexOf(n % 100) === -1 ? 'слова' : 'слів';
+    document.getElementById('word-count').textContent = n + ' ' + form;
+  }
+
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function () { t.classList.remove('show'); }, 2500);
+  }
+
+  /* ── Init ── */
+  load();
+  renderSidebar();
+  var keys = sortedKeys();
+  if (keys.length > 0) {
+    openDay(keys[0]);
+  } else {
+    document.getElementById('empty-state').classList.remove('hidden');
+    document.getElementById('content-view').classList.add('hidden');
+  }
+
+}());
+</script>
+</body>
+</html>
